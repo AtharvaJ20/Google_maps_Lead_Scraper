@@ -11,10 +11,18 @@ more stable than Google Maps' obfuscated CSS class names.
 """
 from __future__ import annotations
 
+import os
 import random
 import re
 import time
 import urllib.parse
+
+# On Render, the build cache (/opt/render/.cache) is not mounted at runtime.
+# Point Playwright to a path inside the project source that IS deployed.
+if os.environ.get("RENDER"):
+    os.environ.setdefault(
+        "PLAYWRIGHT_BROWSERS_PATH", "/opt/render/project/src"
+    )
 
 from playwright.sync_api import Browser, Page, sync_playwright
 from playwright.sync_api import TimeoutError as PWTimeout
