@@ -1,12 +1,560 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Google Maps Lead Scraper</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Extract local business leads from Google Maps. Get names, addresses, phone numbers, websites and ratings as Excel or CSV — free.">
+  <title>Google Maps Lead Scraper</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@0.441.0/dist/umd/lucide.min.js"></script>
+
+  <style>
+    /* ── Design tokens ────────────────────────────────────────────────── */
+    :root {
+      --color-accent:           #16a34a;
+      --color-accent-hover:     #15803d;
+      --color-accent-light:     #f0fdf4;
+      --color-accent-ring:      #bbf7d0;
+      --color-bg:               #f9fafb;
+      --color-card:             #ffffff;
+      --color-border:           #e5e7eb;
+      --color-border-focus:     #16a34a;
+      --color-text-primary:     #111827;
+      --color-text-secondary:   #4b5563;
+      --color-text-muted:       #9ca3af;
+      --color-text-on-accent:   #ffffff;
+      --color-error:            #dc2626;
+      --color-error-bg:         #fef2f2;
+      --color-warning:          #d97706;
+      --color-warning-bg:       #fffbeb;
+      --color-step-done:        #16a34a;
+      --color-step-active:      #2563eb;
+      --color-step-pending:     #d1d5db;
+      --color-page-active-bg:   #16a34a;
+      --color-page-active-text: #ffffff;
+      --color-page-hover-bg:    #f0fdf4;
+    }
+
+    /* ── Base ─────────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background-color: var(--color-bg);
+      color: var(--color-text-primary);
+      min-height: 100dvh;
+      margin: 0;
+    }
+
+    /* ── Spinner ──────────────────────────────────────────────────────── */
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spin { animation: spin 1s linear infinite; }
+    @media (prefers-reduced-motion: reduce) {
+      .spin { animation: none; }
+      * { transition-duration: 0ms !important; }
+    }
+
+    /* ── Card ─────────────────────────────────────────────────────────── */
+    .card {
+      background: var(--color-card);
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.06);
+      padding: 24px;
+    }
+    @media (min-width: 640px) { .card { padding: 32px; } }
+
+    /* ── Inputs ───────────────────────────────────────────────────────── */
+    .input-field {
+      display: block;
+      width: 100%;
+      min-height: 44px;
+      padding: 11px 12px 11px 38px;
+      border: 1px solid var(--color-border);
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: inherit;
+      color: var(--color-text-primary);
+      background: var(--color-card);
+      outline: none;
+      transition: border-color 150ms ease-out, box-shadow 150ms ease-out;
+    }
+    .input-field::placeholder { color: var(--color-text-muted); }
+    .input-field:focus {
+      border-color: var(--color-border-focus);
+      box-shadow: 0 0 0 3px var(--color-accent-ring);
+    }
+    .input-field.is-invalid { border-color: var(--color-error); }
+    .input-field.is-invalid:focus { box-shadow: 0 0 0 3px rgba(220,38,38,.15); }
+
+    /* ── Buttons ──────────────────────────────────────────────────────── */
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 44px;
+      padding: 10px 24px;
+      background: var(--color-accent);
+      color: var(--color-text-on-accent);
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background-color 150ms ease-out;
+    }
+    .btn-primary:hover:not(:disabled) { background: var(--color-accent-hover); }
+    .btn-primary:focus-visible { outline: 2px solid var(--color-accent-ring); outline-offset: 2px; }
+    .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+
+    .btn-solid-sm {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      height: 38px;
+      padding: 0 16px;
+      background: var(--color-accent);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      box-shadow: 0 1px 2px rgba(0,0,0,.08);
+      transition: background-color 150ms ease-out;
+    }
+    .btn-solid-sm:hover:not(:disabled) { background: var(--color-accent-hover); }
+    .btn-solid-sm:focus-visible { outline: 2px solid var(--color-accent-ring); outline-offset: 2px; }
+    .btn-solid-sm:disabled { opacity: .5; cursor: not-allowed; }
+
+    .btn-outline-sm {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      height: 38px;
+      padding: 0 16px;
+      background: var(--color-card);
+      color: var(--color-accent);
+      border: 1px solid var(--color-accent);
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      box-shadow: 0 1px 2px rgba(0,0,0,.08);
+      transition: background-color 150ms ease-out;
+    }
+    .btn-outline-sm:hover:not(:disabled) { background: var(--color-accent-light); }
+    .btn-outline-sm:focus-visible { outline: 2px solid var(--color-accent-ring); outline-offset: 2px; }
+    .btn-outline-sm:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* ── Chips ────────────────────────────────────────────────────────── */
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 14px;
+      background: #f3f4f6;
+      border: 1px solid var(--color-border);
+      border-radius: 9999px;
+      font-size: 13px;
+      font-weight: 500;
+      font-family: inherit;
+      color: var(--color-text-secondary);
+      cursor: pointer;
+      transition: background-color 120ms ease-out, border-color 120ms ease-out, color 120ms ease-out;
+    }
+    .chip:hover { background: var(--color-accent-light); border-color: var(--color-accent); color: var(--color-accent); }
+    .chip:focus-visible { outline: 2px solid var(--color-accent-ring); outline-offset: 2px; }
+
+    /* ── Progress stepper ─────────────────────────────────────────────── */
+    .step-connector {
+      flex: 1;
+      height: 2px;
+      background: var(--color-step-pending);
+      margin-top: 10px;
+      align-self: flex-start;
+      transition: background-color 300ms ease-in-out;
+    }
+    .step-connector.done { background: var(--color-step-done); }
+
+    /* ── Table ────────────────────────────────────────────────────────── */
+    .results-table { width: 100%; border-collapse: collapse; }
+    .results-table th {
+      background: var(--color-accent-light);
+      color: var(--color-text-secondary);
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      padding: 12px 16px;
+      text-align: left;
+      border-bottom: 1px solid var(--color-border);
+      white-space: nowrap;
+    }
+    .results-table td {
+      padding: 12px 16px;
+      font-size: 14px;
+      color: var(--color-text-primary);
+      border-bottom: 1px solid var(--color-border);
+      vertical-align: middle;
+    }
+    .results-table tbody tr:last-child td { border-bottom: none; }
+    .results-table tbody tr:hover td { background: #f9fafb; }
+
+    /* ── Pagination ───────────────────────────────────────────────────── */
+    .page-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 36px;
+      height: 36px;
+      padding: 0 8px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      font-family: inherit;
+      color: var(--color-text-secondary);
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      transition: background-color 100ms ease-out;
+    }
+    .page-btn:hover:not(:disabled):not(.active) { background: var(--color-page-hover-bg); }
+    .page-btn.active { background: var(--color-page-active-bg); color: var(--color-page-active-text); }
+    .page-btn:disabled { opacity: .4; cursor: not-allowed; }
+    .page-btn:focus-visible { outline: 2px solid var(--color-accent-ring); outline-offset: 2px; }
+
+    /* ── Link helpers ─────────────────────────────────────────────────── */
+    .link-accent { color: var(--color-accent); text-decoration: none; }
+    .link-accent:hover { text-decoration: underline; }
+    .link-muted { color: var(--color-text-secondary); text-decoration: none; }
+    .link-muted:hover { color: var(--color-accent); }
+
+    /* ── Utility ──────────────────────────────────────────────────────── */
+    .visually-hidden {
+      position: absolute; width: 1px; height: 1px;
+      padding: 0; margin: -1px; overflow: hidden;
+      clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+    }
+  </style>
 </head>
+
 <body>
-    <h1>Google Maps Lead Scraper</h1>
-    <p>UI implemented in Phase 1 by Arjun.</p>
+
+  <!-- ── Header ──────────────────────────────────────────────────────── -->
+  <header>
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-6 text-center md:text-left">
+      <div class="flex items-center justify-center md:justify-start gap-2 mb-1">
+        <i data-lucide="map-pin" aria-hidden="true"
+           style="width:28px;height:28px;color:var(--color-accent);flex-shrink:0"></i>
+        <h1 style="font-size:1.75rem;font-weight:700;line-height:1.2">
+          Google Maps Lead Scraper
+        </h1>
+      </div>
+      <p style="font-size:15px;color:var(--color-text-secondary);margin-top:4px">
+        Extract local business leads instantly — free
+      </p>
+    </div>
+  </header>
+
+  <!-- ── Main ────────────────────────────────────────────────────────── -->
+  <main class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
+
+    <!-- ─ State 1: Search ──────────────────────────────────────────── -->
+    <section id="state-search" aria-label="Search form">
+      <div class="card">
+        <h2 style="font-size:1.25rem;font-weight:600;margin-bottom:4px">
+          Find Local Business Leads
+        </h2>
+        <p style="font-size:14px;color:var(--color-text-secondary);margin-bottom:20px">
+          Enter a business type and location to get started
+        </p>
+
+        <form id="search-form" novalidate>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
+
+            <!-- Business Type -->
+            <div>
+              <label for="category"
+                     style="display:block;font-size:14px;font-weight:500;margin-bottom:6px">
+                Business Type
+              </label>
+              <div style="position:relative">
+                <i data-lucide="briefcase" aria-hidden="true"
+                   style="position:absolute;left:11px;top:50%;transform:translateY(-50%);
+                          width:16px;height:16px;color:var(--color-text-muted);pointer-events:none"></i>
+                <input type="text" id="category" name="category"
+                       class="input-field"
+                       placeholder="e.g. dentists, restaurants, gyms"
+                       autocomplete="off"
+                       required
+                       aria-required="true"
+                       aria-describedby="category-error">
+              </div>
+              <p id="category-error" role="alert"
+                 style="display:none;font-size:13px;color:var(--color-error);margin-top:4px">
+                Please enter a business type (e.g. dentists, restaurants)
+              </p>
+            </div>
+
+            <!-- Location -->
+            <div>
+              <label for="location"
+                     style="display:block;font-size:14px;font-weight:500;margin-bottom:6px">
+                Location
+              </label>
+              <div style="position:relative">
+                <i data-lucide="map-pin" aria-hidden="true"
+                   style="position:absolute;left:11px;top:50%;transform:translateY(-50%);
+                          width:16px;height:16px;color:var(--color-text-muted);pointer-events:none"></i>
+                <input type="text" id="location" name="location"
+                       class="input-field"
+                       placeholder="e.g. Pune, Maharashtra"
+                       autocomplete="off"
+                       required
+                       aria-required="true"
+                       aria-describedby="location-error">
+              </div>
+              <p id="location-error" role="alert"
+                 style="display:none;font-size:13px;color:var(--color-error);margin-top:4px">
+                Please enter a location (e.g. Pune, Mumbai)
+              </p>
+            </div>
+          </div>
+
+          <!-- Submit -->
+          <div class="flex justify-center sm:justify-end">
+            <button type="submit" id="search-btn" class="btn-primary w-full sm:w-auto">
+              <span id="search-btn-icon" style="display:inline-flex;align-items:center">
+                <i data-lucide="search" aria-hidden="true" style="width:16px;height:16px"></i>
+              </span>
+              <span id="search-btn-label">Search Leads</span>
+            </button>
+          </div>
+        </form>
+
+        <!-- Example chips -->
+        <div style="margin-top:24px;padding-top:20px;border-top:1px solid var(--color-border)">
+          <p style="font-size:13px;font-weight:500;color:var(--color-text-muted);margin-bottom:10px">
+            Try an example
+          </p>
+          <div style="display:flex;flex-wrap:wrap;gap:8px">
+            <button type="button" class="chip"
+                    data-category="Restaurants" data-location="Mumbai">
+              Restaurants in Mumbai
+            </button>
+            <button type="button" class="chip"
+                    data-category="Dentists" data-location="Bangalore">
+              Dentists in Bangalore
+            </button>
+            <button type="button" class="chip"
+                    data-category="Gyms" data-location="Pune">
+              Gyms in Pune
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─ State 2: Progress ─────────────────────────────────────────── -->
+    <section id="state-progress" aria-label="Scraping progress" aria-live="polite" hidden>
+      <div class="card">
+        <h2 id="progress-heading"
+            style="font-size:18px;font-weight:600;margin-bottom:4px">
+          Scraping in progress…
+        </h2>
+        <p id="progress-query"
+           style="font-size:14px;color:var(--color-text-secondary);margin-bottom:28px">
+        </p>
+
+        <!-- Step track -->
+        <div style="display:flex;align-items:flex-start;margin-bottom:24px"
+             role="list" aria-label="Progress steps">
+
+          <!-- Step 1 -->
+          <div style="display:flex;flex-direction:column;align-items:center;flex:1;min-width:0"
+               role="listitem">
+            <div id="step-icon-1" style="width:20px;height:20px;color:var(--color-step-pending)">
+              <i data-lucide="circle" aria-hidden="true" style="width:20px;height:20px"></i>
+            </div>
+            <span style="font-size:10px;color:var(--color-text-muted);margin-top:6px;text-align:center;line-height:1.3">
+              Opening<br>Maps
+            </span>
+          </div>
+
+          <div class="step-connector" id="conn-1"></div>
+
+          <!-- Step 2 -->
+          <div style="display:flex;flex-direction:column;align-items:center;flex:1;min-width:0"
+               role="listitem">
+            <div id="step-icon-2" style="width:20px;height:20px;color:var(--color-step-pending)">
+              <i data-lucide="circle" aria-hidden="true" style="width:20px;height:20px"></i>
+            </div>
+            <span style="font-size:10px;color:var(--color-text-muted);margin-top:6px;text-align:center;line-height:1.3">
+              Searching
+            </span>
+          </div>
+
+          <div class="step-connector" id="conn-2"></div>
+
+          <!-- Step 3 -->
+          <div style="display:flex;flex-direction:column;align-items:center;flex:1;min-width:0"
+               role="listitem">
+            <div id="step-icon-3" style="width:20px;height:20px;color:var(--color-step-pending)">
+              <i data-lucide="circle" aria-hidden="true" style="width:20px;height:20px"></i>
+            </div>
+            <span style="font-size:10px;color:var(--color-text-muted);margin-top:6px;text-align:center;line-height:1.3">
+              Loading<br>results
+            </span>
+          </div>
+
+          <div class="step-connector" id="conn-3"></div>
+
+          <!-- Step 4 -->
+          <div style="display:flex;flex-direction:column;align-items:center;flex:1;min-width:0"
+               role="listitem">
+            <div id="step-icon-4" style="width:20px;height:20px;color:var(--color-step-pending)">
+              <i data-lucide="circle" aria-hidden="true" style="width:20px;height:20px"></i>
+            </div>
+            <span style="font-size:10px;color:var(--color-text-muted);margin-top:6px;text-align:center;line-height:1.3">
+              Extracting<br>data
+            </span>
+          </div>
+
+          <div class="step-connector" id="conn-4"></div>
+
+          <!-- Step 5 -->
+          <div style="display:flex;flex-direction:column;align-items:center;flex:1;min-width:0"
+               role="listitem">
+            <div id="step-icon-5" style="width:20px;height:20px;color:var(--color-step-pending)">
+              <i data-lucide="circle" aria-hidden="true" style="width:20px;height:20px"></i>
+            </div>
+            <span style="font-size:10px;color:var(--color-text-muted);margin-top:6px;text-align:center;line-height:1.3">
+              Preparing<br>export
+            </span>
+          </div>
+        </div>
+
+        <p id="status-text" aria-live="polite"
+           style="font-size:14px;color:var(--color-text-secondary);text-align:center">
+          Opening Google Maps…
+        </p>
+      </div>
+    </section>
+
+    <!-- ─ State 3: Results ──────────────────────────────────────────── -->
+    <section id="state-results" aria-label="Search results" hidden>
+
+      <!-- Results header row -->
+      <div class="flex justify-between items-start flex-wrap gap-3 mb-4">
+        <div>
+          <p id="results-summary"
+             style="font-size:15px;font-weight:500;color:var(--color-text-primary)">
+          </p>
+          <button type="button" id="btn-new-search"
+                  style="display:inline-flex;align-items:center;gap:4px;
+                         margin-top:4px;font-size:13px;color:var(--color-accent);
+                         background:none;border:none;cursor:pointer;padding:0;
+                         font-family:inherit;font-weight:500">
+            <i data-lucide="rotate-ccw" aria-hidden="true" style="width:13px;height:13px"></i>
+            New Search
+          </button>
+        </div>
+
+        <!-- Download buttons -->
+        <div id="download-btns" class="flex gap-2 flex-wrap">
+          <button type="button" id="btn-xlsx" class="btn-solid-sm"
+                  aria-label="Download results as Excel spreadsheet">
+            <span id="xlsx-icon" style="display:inline-flex">
+              <i data-lucide="file-spreadsheet" aria-hidden="true"
+                 style="width:16px;height:16px"></i>
+            </span>
+            <span id="xlsx-label">Download Excel</span>
+          </button>
+          <button type="button" id="btn-csv" class="btn-outline-sm"
+                  aria-label="Download results as CSV file">
+            <span id="csv-icon" style="display:inline-flex">
+              <i data-lucide="file-text" aria-hidden="true"
+                 style="width:16px;height:16px"></i>
+            </span>
+            <span id="csv-label">Download CSV</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Table card -->
+      <div class="card" style="padding:0;overflow:hidden">
+        <div style="overflow-x:auto">
+          <table class="results-table" aria-label="Business leads">
+            <thead>
+              <tr>
+                <th scope="col" style="min-width:160px">Name</th>
+                <th scope="col" style="min-width:200px">Address</th>
+                <th scope="col" style="min-width:120px">Phone</th>
+                <th scope="col" style="min-width:140px">Website</th>
+                <th scope="col" style="min-width:80px;text-align:center">Rating</th>
+                <th scope="col" style="min-width:80px;text-align:right">Reviews</th>
+              </tr>
+            </thead>
+            <tbody id="results-tbody"></tbody>
+          </table>
+        </div>
+
+        <!-- Pagination -->
+        <div id="pagination-wrap" hidden
+             style="padding:14px 16px;border-top:1px solid var(--color-border)">
+          <nav id="pagination-nav" aria-label="Results pagination"
+               style="display:flex;justify-content:center;align-items:center;gap:4px;flex-wrap:wrap">
+          </nav>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─ State E: Error ────────────────────────────────────────────── -->
+    <section id="state-error" aria-label="Error message" hidden>
+      <div id="error-card" class="card" role="alert">
+        <div style="display:flex;align-items:flex-start;gap:16px">
+          <span id="error-icon" aria-hidden="true"
+                style="display:inline-flex;flex-shrink:0;color:var(--color-warning)">
+            <i data-lucide="alert-triangle" style="width:24px;height:24px"></i>
+          </span>
+          <div>
+            <h2 style="font-size:18px;font-weight:600;margin-bottom:8px">
+              Something went wrong
+            </h2>
+            <p id="error-message"
+               style="font-size:14px;color:var(--color-text-secondary);margin-bottom:16px">
+            </p>
+            <button type="button" id="btn-error-new-search"
+                    style="display:inline-flex;align-items:center;gap:6px;
+                           font-size:14px;font-weight:500;color:var(--color-accent);
+                           background:none;border:none;cursor:pointer;padding:0;font-family:inherit">
+              <i data-lucide="rotate-ccw" aria-hidden="true" style="width:14px;height:14px"></i>
+              Try a New Search
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ── Footer ──────────────────────────────────────────────────────── -->
+  <footer style="border-top:1px solid var(--color-border);padding:24px 0;text-align:center">
+    <p style="font-size:13px;color:var(--color-text-muted)">
+      Google Maps Lead Scraper — built by Atharva Jadhav
+    </p>
+  </footer>
+
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
 </body>
 </html>
