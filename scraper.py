@@ -46,8 +46,8 @@ class BlockedError(ScraperError):
 
 COLUMNS = ["name", "address", "phone", "website", "rating", "reviews"]
 MAX_RESULTS = 20
-DELAY_MIN   = 0.5   # seconds between place visits
-DELAY_MAX   = 1.2
+DELAY_MIN   = 0.2   # seconds between place visits (reduced for Render free tier)
+DELAY_MAX   = 0.5
 
 
 # ── Public entry point ─────────────────────────────────────────────────────────
@@ -175,7 +175,7 @@ def _scroll_feed(page: Page, target: int) -> None:
             "const f = document.querySelector('[role=\"feed\"]');"
             "if (f) f.scrollTop += 600;"
         )
-        time.sleep(0.6)
+        time.sleep(0.3)
         # Some versions show an explicit "end of list" marker
         end_marker = page.query_selector(
             'span[aria-label*="end of list" i], [class*="HlvSq"]'
