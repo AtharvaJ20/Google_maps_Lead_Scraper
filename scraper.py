@@ -45,7 +45,7 @@ class BlockedError(ScraperError):
 # ── Constants ──────────────────────────────────────────────────────────────────
 
 COLUMNS = ["name", "address", "phone", "website", "rating", "reviews"]
-MAX_RESULTS = 20
+MAX_RESULTS = 10
 DELAY_MIN   = 0.2   # seconds between place visits (reduced for Render free tier)
 DELAY_MAX   = 0.5
 

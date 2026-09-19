@@ -3,7 +3,7 @@
   'use strict';
 
   // ── Constants ────────────────────────────────────────────────────────────
-  const PAGE_SIZE    = 20;
+  const PAGE_SIZE    = 10;
   const TIMEOUT_MS   = 120000;
 
   // Progress step timing: ms after search start when each step becomes active
