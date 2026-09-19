@@ -78,7 +78,20 @@ def scrape(category: str, location: str) -> list[dict]:
 def _launch_browser(pw) -> Browser:
     common = {
         "headless": True,
-        "args": ["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"],
+        "args": [
+            "--no-sandbox",
+            "--disable-dev-shm-usage",
+            "--disable-gpu",
+            # Memory-reduction flags for Render free tier (512 MB RAM)
+            "--disable-extensions",
+            "--disable-background-networking",
+            "--disable-sync",
+            "--disable-translate",
+            "--no-first-run",
+            "--disable-default-apps",
+            "--disable-client-side-phishing-detection",
+            "--js-flags=--max-old-space-size=128",
+        ],
     }
     try:
         return pw.chromium.launch(channel="chrome", **common)
